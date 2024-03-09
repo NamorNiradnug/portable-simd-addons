@@ -43,7 +43,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-03-08
+          toolchain: nightly-2024-03-08
           override: true
       - run: rustup component add clippy
       - uses: actions-rs/cargo@v1
