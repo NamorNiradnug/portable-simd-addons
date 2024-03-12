@@ -10,3 +10,6 @@ description = "Portable SIMD-based algorithms"
 
 [lib]
 name = "simd_addons"
+
+[dev-dependencies]
+approx = "0.5"

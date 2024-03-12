@@ -2,6 +2,7 @@
 ///
 /// [scheme_wiki]: https://en.wikipedia.org/wiki/Estrin's_scheme
 ///
+/// # Examples
 /// ```
 /// # #![feature(portable_simd)]
 /// # use std::simd::{prelude::*, *};

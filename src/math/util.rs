@@ -2,6 +2,7 @@ use std::simd::{num::SimdFloat, LaneCount, Simd, SupportedLaneCount};
 
 /// Returns `1u32 << 31` if sign-bit is set and zero otherwise.
 ///
+/// # Examples
 /// ```
 /// # #![feature(portable_simd)]
 /// # use std::simd::prelude::*;
@@ -21,6 +22,7 @@ where
 
 /// Returns `1u64 << 63` if sign-bit is set and zero otherwise.
 ///
+/// # Examples
 /// ```
 /// # #![feature(portable_simd)]
 /// # use std::simd::prelude::*;
