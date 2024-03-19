@@ -1,9 +1,9 @@
 use std::{
-    f32::consts::{FRAC_2_PI, FRAC_PI_2},
+    f32::consts::{FRAC_2_PI, FRAC_PI_2, FRAC_PI_4, PI, SQRT_2},
     simd::{
         cmp::{SimdPartialEq, SimdPartialOrd},
         num::SimdFloat,
-        LaneCount, Simd, StdFloat, SupportedLaneCount,
+        LaneCount, Mask, Simd, StdFloat, SupportedLaneCount,
     },
 };
 
@@ -124,6 +124,20 @@ where
 }
 
 #[inline]
+fn atan_taylor_f32<const N: usize>(x: Simd<f32, N>) -> Simd<f32, N>
+where
+    LaneCount<N>: SupportedLaneCount,
+{
+    const P0: f32 = -3.333_295E-1;
+    const P1: f32 = 1.997_771_1E-1;
+    const P2: f32 = -1.387_768_5E-1;
+    const P3: f32 = 8.053_744_6E-2;
+
+    let x2 = x * x;
+    polynomial_simd!(x2; P0, P1, P2, P3).mul_add(x2 * x, x)
+}
+
+#[inline]
 fn sin_sign_adj<const N: usize>(quadrants: Simd<u32, N>) -> Simd<u32, N>
 where
     LaneCount<N>: SupportedLaneCount,
@@ -142,7 +156,7 @@ where
 impl<const N: usize> Trigonometry for Simd<f32, N>
 where
     LaneCount<N>: SupportedLaneCount,
-    Self: SimdFloat<Scalar = f32, Bits = Simd<u32, N>>,
+    Self: SimdFloat<Scalar = f32, Bits = Simd<u32, N>, Mask = Mask<i32, N>>,
 {
     #[inline]
     fn sin(self) -> Self {
@@ -191,16 +205,63 @@ where
         asin_abs.sign_combine(self)
     }
 
+    #[inline]
     fn acos(self) -> Self {
         Simd::splat(FRAC_PI_2) - self.asin()
     }
 
+    #[inline]
     fn atan(self) -> Self {
-        todo!()
+        let abs_t = self.abs();
+        // for |x| >= √2 + 1 = tan(3π/8) ("big"): atan t = atan -1/t + π/2
+        // for √2 - 1 = tan(π/8) <= |x| <= √2 + 1: atan t = atan (t-1)/(t+1) + π/4
+        // for |x| < √2 - 1: atan t = atan t/1
+        let not_big = abs_t.simd_le(Simd::splat(SQRT_2 + 1.0));
+        let not_small = abs_t.simd_ge(Simd::splat(SQRT_2 - 1.0));
+        let reduced_arg = {
+            let a = not_big.select(abs_t, Simd::default())
+                - not_small.select(Simd::splat(1.0), Simd::default());
+            let b = not_big.select(Simd::splat(1.0), Simd::default())
+                + not_small.select(abs_t, Simd::default());
+            a / b
+        };
+        let taylor_result = atan_taylor_f32(reduced_arg);
+        let atan_abs = taylor_result
+            + not_small.select(
+                not_big.select(Simd::splat(FRAC_PI_4), Simd::splat(FRAC_PI_2)),
+                Simd::default(),
+            );
+        atan_abs.sign_combine(self)
     }
 
-    fn atan2(self, _other: Self) -> Self {
-        todo!()
+    #[inline]
+    fn atan2(self, x: Self) -> Self {
+        let abs_y = self.abs();
+        let abs_x = x.abs();
+
+        let not_big = (abs_x * Simd::splat(SQRT_2 + 1.0)).simd_ge(abs_y);
+        let not_small = (abs_x * Simd::splat(SQRT_2 - 1.0)).simd_le(abs_y);
+        let reduced_ratio = {
+            let a =
+                not_big.select(abs_y, Simd::default()) - not_small.select(abs_x, Simd::default());
+            let b =
+                not_big.select(abs_x, Simd::default()) + not_small.select(abs_y, Simd::default());
+            (abs_y.is_finite() | abs_x.is_finite()).select(a / b, Simd::default())
+        };
+        let taylor_result = atan_taylor_f32(reduced_ratio);
+        let mut atan_abs = taylor_result
+            + not_small.select(
+                not_big.select(Simd::splat(FRAC_PI_4), Simd::splat(FRAC_PI_2)),
+                Simd::default(),
+            );
+        // fix NaNs when x and y are both zeros
+        atan_abs = Simd::from_bits(x.to_bits() | self.to_bits())
+            .simd_eq(Simd::default())
+            .select(Simd::from_bits(x.to_bits() ^ self.to_bits()), atan_abs);
+        x.sign_mask()
+            .simd_eq(Simd::default())
+            .select(atan_abs, Simd::splat(PI) - atan_abs)
+            .sign_combine(self)
     }
 }
 
@@ -209,37 +270,46 @@ mod test {
     extern crate test;
     use crate::math::Trigonometry;
     use approx::*;
+    use std::f32::INFINITY;
     use std::ops::Range;
     use std::simd::prelude::*;
 
-    fn linspace(range: Range<f32>, n: usize) -> Vec<f32> {
-        Vec::from_iter(
-            (0..=n).map(|i| range.start + (range.end - range.start) * (i as f32) / (n as f32)),
-        )
+    fn linspace(range: Range<f32>, n: usize) -> impl Iterator<Item = f32> {
+        (0..=n).map(move |i| range.start + (range.end - range.start) * (i as f32) / (n as f32))
     }
 
     const BENCH_POINTS: usize = 200_000;
 
+    macro_rules! simd_fn {
+        ($x: ident. $func: ident ()) => {
+            Simd::<_, 1>::splat($x).$func()[0]
+        };
+
+        ($x: ident. $func: ident ($arg: expr)) => {
+            Simd::<_, 1>::splat($x).$func(Simd::splat($arg))[0]
+        };
+    }
+
     #[bench]
     #[no_mangle]
-    fn vec_sin_bench(b: &mut test::Bencher) {
-        let data = linspace(-1e4..1e4, BENCH_POINTS);
+    fn vec_atan_bench(b: &mut test::Bencher) {
+        let data: Vec<_> = linspace(-1e4..1e4, BENCH_POINTS).collect();
         b.iter(|| {
             data.array_chunks::<64>()
-                .map(|x| Simd::from_array(*x).sin())
+                .map(|x| Simd::from_array(*x).atan())
                 .sum::<f32x64>()
         })
     }
 
     #[bench]
     fn scalar_sin_bench(b: &mut test::Bencher) {
-        let data = linspace(-1e4..1e4, BENCH_POINTS);
+        let data: Vec<_> = linspace(-1e4..1e4, BENCH_POINTS).collect();
         b.iter(|| data.iter().map(|x| x.sin()).sum::<f32>())
     }
 
     #[bench]
     fn vec_sin_cos_bench(b: &mut test::Bencher) {
-        let data = linspace(-1e4..1e4, BENCH_POINTS);
+        let data: Vec<_> = linspace(-1e4..1e4, BENCH_POINTS).collect();
         b.iter(|| {
             data.array_chunks::<64>()
                 .map(|x| {
@@ -254,7 +324,7 @@ mod test {
     fn sin_accurancy() {
         let data = linspace(-1e4..1e4, 1_000_000);
         for x in data {
-            assert_abs_diff_eq!(x.sin(), f32x1::splat(x).sin()[0], epsilon = 10e-6);
+            assert_abs_diff_eq!(x.sin(), simd_fn!(x.sin()), epsilon = 1e-6);
         }
     }
 
@@ -262,7 +332,7 @@ mod test {
     fn cos_accurancy() {
         let data = linspace(-1e4..1e4, 1_000_000);
         for x in data {
-            assert_abs_diff_eq!(x.cos(), f32x1::splat(x).cos()[0], epsilon = 10e-6);
+            assert_abs_diff_eq!(x.cos(), simd_fn!(x.cos()), epsilon = 1e-6);
         }
     }
 
@@ -270,10 +340,46 @@ mod test {
     fn asin_acos_accurancy() {
         let data = linspace(-1.0..1.0, 100_000);
         for x in data {
+            assert_ulps_eq!(x.asin(), simd_fn!(x.asin()));
+            assert_ulps_eq!(x.acos(), simd_fn!(x.acos()));
+            assert_ulps_eq!(x, f32x1::splat(x).asin().sin()[0]);
+        }
+    }
+
+    #[test]
+    fn atan_test() {
+        for t in [0.0, -0.0, INFINITY, -INFINITY] {
+            assert_eq!(t.atan(), simd_fn!(t.atan()));
+        }
+    }
+
+    #[test]
+    fn atan_accurancy() {
+        let data = linspace(-1.0..1.0, 100_000);
+        for x in data {
             let vec = f32x1::splat(x);
-            assert_ulps_eq!(x.asin(), vec.asin()[0]);
-            assert_ulps_eq!(x.acos(), vec.acos()[0]);
-            assert_ulps_eq!(x, vec.asin().sin()[0]);
+            assert_ulps_eq!(x.atan(), simd_fn!(x.atan()));
+            assert_abs_diff_eq!(x, vec.atan().tan()[0], epsilon = 1e-6);
+        }
+    }
+
+    #[test]
+    fn atan2_test() {
+        f32x1::splat(1.0).atan2(f32x1::splat(1.0));
+        const VALUES: [f32; 6] = [0.0, -0.0, 1.0, -1.0, INFINITY, -INFINITY];
+        for y in VALUES {
+            for x in VALUES {
+                assert_eq!(y.atan2(x), simd_fn!(y.atan2(x)), "atan2({}, {})", x, y);
+            }
+        }
+    }
+
+    #[test]
+    fn atan2_accurancy() {
+        for x in linspace(-10.0..10.0, 1_000) {
+            for y in linspace(-10.0..10.0, 1_000) {
+                assert_ulps_eq!(y.atan2(x), simd_fn!(y.atan2(x)));
+            }
         }
     }
 }
