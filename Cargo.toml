@@ -6,7 +6,7 @@ edition = "2021"
 repository = "https://github.com/NamorNiradnug/portable-simd-addons"
 license = "MIT"
 keywords = ["simd", "math"]
-description = "Portable SIMD-based algorithms"
+description = "Portable SIMD-based functions and algorithms"
 
 [lib]
 name = "simd_addons"

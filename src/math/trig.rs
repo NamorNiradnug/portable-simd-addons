@@ -213,9 +213,9 @@ where
     #[inline]
     fn atan(self) -> Self {
         let abs_t = self.abs();
-        // for |x| >= √2 + 1 = tan(3π/8) ("big"): atan t = atan -1/t + π/2
-        // for √2 - 1 = tan(π/8) <= |x| <= √2 + 1: atan t = atan (t-1)/(t+1) + π/4
-        // for |x| < √2 - 1: atan t = atan t/1
+        // for |t| > √2 + 1 = tan(3π/8) ("big"): atan |t| = atan -1/|t| + π/2
+        // for √2 - 1 = tan(π/8) <= |t| <= √2 + 1: atan |t| = atan (|t|-1)/(|t|+1) + π/4
+        // for |t| < √2 - 1 ("small"): atan |t| = atan |t|/1
         let not_big = abs_t.simd_le(Simd::splat(SQRT_2 + 1.0));
         let not_small = abs_t.simd_ge(Simd::splat(SQRT_2 - 1.0));
         let reduced_arg = {
@@ -281,12 +281,8 @@ mod test {
     const BENCH_POINTS: usize = 200_000;
 
     macro_rules! simd_fn {
-        ($x: ident. $func: ident ()) => {
-            Simd::<_, 1>::splat($x).$func()[0]
-        };
-
-        ($x: ident. $func: ident ($arg: expr)) => {
-            Simd::<_, 1>::splat($x).$func(Simd::splat($arg))[0]
+        ($x: tt $( .$func: tt ( $( $args: expr ),* )) *) => {
+            Simd::<_, 1>::splat($x)$( .$func( $( Simd::splat($args) ),* ) )*[0]
         };
     }
 
@@ -342,7 +338,7 @@ mod test {
         for x in data {
             assert_ulps_eq!(x.asin(), simd_fn!(x.asin()));
             assert_ulps_eq!(x.acos(), simd_fn!(x.acos()));
-            assert_ulps_eq!(x, f32x1::splat(x).asin().sin()[0]);
+            assert_ulps_eq!(x, simd_fn!(x.asin().sin()));
         }
     }
 
@@ -357,9 +353,8 @@ mod test {
     fn atan_accurancy() {
         let data = linspace(-1.0..1.0, 100_000);
         for x in data {
-            let vec = f32x1::splat(x);
             assert_ulps_eq!(x.atan(), simd_fn!(x.atan()));
-            assert_abs_diff_eq!(x, vec.atan().tan()[0], epsilon = 1e-6);
+            assert_abs_diff_eq!(x, simd_fn!(x.atan().tan()), epsilon = 1e-6);
         }
     }
 
