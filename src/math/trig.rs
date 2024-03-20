@@ -290,16 +290,20 @@ mod test {
     fn vec_sin_bench(b: &mut test::Bencher) {
         let data: Vec<_> = linspace(-1e4..1e4, BENCH_POINTS).collect();
         b.iter(|| {
-            data.array_chunks::<64>()
-                .map(|x| Simd::from_array(*x).sin())
-                .sum::<f32x64>()
+            for x in data.array_chunks::<64>() {
+                test::black_box(Simd::from_array(*x).sin());
+            }
         })
     }
 
     #[bench]
     fn scalar_sin_bench(b: &mut test::Bencher) {
         let data: Vec<_> = linspace(-1e4..1e4, BENCH_POINTS).collect();
-        b.iter(|| data.iter().map(|x| x.sin()).sum::<f32>())
+        b.iter(|| {
+            for x in &data {
+                test::black_box(x.sin());
+            }
+        });
     }
 
     #[bench]
