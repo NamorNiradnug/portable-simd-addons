@@ -310,12 +310,9 @@ mod test {
     fn vec_sin_cos_bench(b: &mut test::Bencher) {
         let data: Vec<_> = linspace(-1e4..1e4, BENCH_POINTS).collect();
         b.iter(|| {
-            data.array_chunks::<64>()
-                .map(|x| {
-                    let (sin, cos) = Simd::from_array(*x).sin_cos();
-                    sin + cos
-                })
-                .sum::<f32x64>()
+            for x in data.array_chunks::<64>() {
+                test::black_box(Simd::from_array(*x).sin_cos());
+            }
         })
     }
 
