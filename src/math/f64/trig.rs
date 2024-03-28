@@ -9,7 +9,7 @@ use crate::{
 };
 
 #[inline]
-fn trig_reduction_f64<const N: usize>(x: Simd<f64, N>) -> (Simd<f64, N>, Simd<u64, N>)
+fn trig_reduction<const N: usize>(x: Simd<f64, N>) -> (Simd<f64, N>, Simd<u64, N>)
 where
     LaneCount<N>: SupportedLaneCount,
 {
@@ -41,7 +41,7 @@ where
 }
 
 #[inline]
-fn sin_cos_taylor_f64<const N: usize>(x: Simd<f64, N>) -> (Simd<f64, N>, Simd<f64, N>)
+fn sin_cos_taylor<const N: usize>(x: Simd<f64, N>) -> (Simd<f64, N>, Simd<f64, N>)
 where
     LaneCount<N>: SupportedLaneCount,
 {
@@ -72,8 +72,8 @@ where
     LaneCount<N>: SupportedLaneCount,
 {
     fn sin(self) -> Self {
-        let (reduced_x, quadrants) = trig_reduction_f64(self);
-        let (sin, cos) = sin_cos_taylor_f64(reduced_x);
+        let (reduced_x, quadrants) = trig_reduction(self);
+        let (sin, cos) = sin_cos_taylor(reduced_x);
 
         let sin_cos_swap = (quadrants & Simd::splat(1)).simd_eq(Simd::default());
         let sin_vals = sin_cos_swap.select(sin, cos);
@@ -83,12 +83,34 @@ where
     }
 
     fn cos(self) -> Self {
-        let (reduced_x, quadrants) = trig_reduction_f64(self);
-        let (sin, cos) = sin_cos_taylor_f64(reduced_x);
+        let (reduced_x, quadrants) = trig_reduction(self);
+        let (sin, cos) = sin_cos_taylor(reduced_x);
 
         let sin_cos_swap = (quadrants & Simd::splat(1)).simd_eq(Simd::default());
         let cos_vals = sin_cos_swap.select(cos, sin);
         cos_vals.sign_combine(Simd::from_bits((quadrants + Simd::splat(1)) << 62))
+    }
+
+    fn tan(self) -> Self {
+        const P0: f64 = -1.795_652_519_764_848_8E7;
+        const P1: f64 = 1.153_516_648_385_874_2E6;
+        const P2: f64 = -1.309_369_391_813_837_9E4;
+
+        const Q0: f64 = -5.386_957_559_294_546_4E7;
+        const Q1: f64 = 2.500_838_018_233_579E7;
+        const Q2: f64 = -1.320_892_344_402_109_7E6;
+        const Q3: f64 = 1.368_129_634_706_929_6E4;
+
+        let (reduced_x, quadrants) = trig_reduction(self);
+        let reduced_x2 = reduced_x * reduced_x;
+        let tan_vals = (polynomial_simd!(reduced_x2; P0, P1, P2)
+            / polynomial_simd!(reduced_x2; Q0, Q1, Q2, Q3, 1.0))
+        .mul_add(reduced_x * reduced_x2, reduced_x);
+
+        (quadrants & Simd::splat(1))
+            .simd_eq(Simd::default())
+            .select(-tan_vals.recip(), tan_vals)
+            .sign_combine(self)
     }
 
     fn asin(self) -> Self {
