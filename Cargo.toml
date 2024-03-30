@@ -13,3 +13,4 @@ name = "simd_addons"
 
 [dev-dependencies]
 approx = "0.5"
+paste = "1.0"

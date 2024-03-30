@@ -26,7 +26,7 @@ where
         .select(abs_x, Simd::default());
     let quadrants_float = (abs_x * Simd::splat(FRAC_2_PI)).round();
 
-    // SAFETY: values in `quadrants_float` are finite and between 0 and 1e5
+    // SAFETY: values in `quadrants_float` are finite and between 0 and 1e13
     let quadrants = unsafe { quadrants_float.to_int_unchecked::<u64>() };
 
     let reduced_x = quadrants_float.mul_add(
@@ -79,7 +79,7 @@ where
         let sin_vals = sin_cos_swap.select(sin, cos);
         sin_vals
             .sign_combine(self)
-            .sign_combine(Simd::from_bits((quadrants & Simd::splat(1)) << 62))
+            .sign_combine(Simd::from_bits(quadrants << 62))
     }
 
     fn cos(self) -> Self {
@@ -109,7 +109,7 @@ where
 
         (quadrants & Simd::splat(1))
             .simd_eq(Simd::default())
-            .select(-tan_vals.recip(), tan_vals)
+            .select(tan_vals, -tan_vals.recip())
             .sign_combine(self)
     }
 

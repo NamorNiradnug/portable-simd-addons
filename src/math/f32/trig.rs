@@ -246,48 +246,6 @@ mod test {
     }
 
     #[test]
-    fn sin_accurancy() {
-        let data = linspace(-1e4..1e4, 1_000_000);
-        for x in data {
-            assert_abs_diff_eq!(x.sin(), simd_fn!(x.sin()), epsilon = 1e-6);
-        }
-    }
-
-    #[test]
-    fn cos_accurancy() {
-        let data = linspace(-1e4..1e4, 1_000_000);
-        for x in data {
-            assert_abs_diff_eq!(x.cos(), simd_fn!(x.cos()), epsilon = 1e-6);
-        }
-    }
-
-    #[test]
-    fn asin_acos_accurancy() {
-        let data = linspace(-1.0..1.0, 100_000);
-        for x in data {
-            assert_ulps_eq!(x.asin(), simd_fn!(x.asin()));
-            assert_ulps_eq!(x.acos(), simd_fn!(x.acos()));
-            assert_ulps_eq!(x, simd_fn!(x.asin().sin()));
-        }
-    }
-
-    #[test]
-    fn atan_test() {
-        for t in [0.0, -0.0, INFINITY, -INFINITY] {
-            assert_eq!(t.atan(), simd_fn!(t.atan()));
-        }
-    }
-
-    #[test]
-    fn atan_accurancy() {
-        let data = linspace(-1.0..1.0, 100_000);
-        for x in data {
-            assert_ulps_eq!(x.atan(), simd_fn!(x.atan()));
-            assert_abs_diff_eq!(x, simd_fn!(x.atan().tan()), epsilon = 1e-6);
-        }
-    }
-
-    #[test]
     fn atan2_test() {
         const VALUES: [f32; 6] = [0.0, -0.0, 1.0, -1.0, INFINITY, -INFINITY];
         for y in VALUES {
