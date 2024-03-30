@@ -71,6 +71,7 @@ impl<const N: usize> Trigonometry for Simd<f64, N>
 where
     LaneCount<N>: SupportedLaneCount,
 {
+    #[inline]
     fn sin(self) -> Self {
         let (reduced_x, quadrants) = trig_reduction(self);
         let (sin, cos) = sin_cos_taylor(reduced_x);
@@ -82,6 +83,7 @@ where
             .sign_combine(Simd::from_bits(quadrants << 62))
     }
 
+    #[inline]
     fn cos(self) -> Self {
         let (reduced_x, quadrants) = trig_reduction(self);
         let (sin, cos) = sin_cos_taylor(reduced_x);
@@ -91,6 +93,7 @@ where
         cos_vals.sign_combine(Simd::from_bits((quadrants + Simd::splat(1)) << 62))
     }
 
+    #[inline]
     fn tan(self) -> Self {
         const P0: f64 = -1.795_652_519_764_848_8E7;
         const P1: f64 = 1.153_516_648_385_874_2E6;

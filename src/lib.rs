@@ -1,3 +1,3 @@
-#![feature(portable_simd, test, array_chunks)]
+#![feature(portable_simd)]
 
 pub mod math;
