@@ -18,6 +18,8 @@ approx_test_simd_fn!(
         sin: (-1e5..1e5).linspace(1_000_000);
         cos: (-1e5..1e5).linspace(1_000_000);
         tan: (-1e5..1e5).linspace(1_000_000);
+        asin: (-1.0..1.0).linspace(100_000);
+        acos: (-1.0..1.0).linspace(100_000);
     }
 );
 

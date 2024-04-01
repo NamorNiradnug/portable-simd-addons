@@ -1,5 +1,5 @@
 use std::{
-    f64::consts::FRAC_2_PI,
+    f64::consts::{FRAC_2_PI, FRAC_PI_2},
     simd::{prelude::*, LaneCount, StdFloat, SupportedLaneCount},
 };
 
@@ -117,11 +117,39 @@ where
     }
 
     fn asin(self) -> Self {
-        todo!()
+        const P0: f64 = -8.198_089_802_484_825;
+        const P1: f64 = 1.956_261_983_317_594_8E1;
+        const P2: f64 = -1.626_247_967_210_700_2E1;
+        const P3: f64 = 5.444_622_390_564_711;
+        const P4: f64 = -6.019_598_008_014_124E-1;
+        const P5: f64 = 4.253_011_369_004_428E-3;
+
+        const Q0: f64 = -4.918_853_881_490_881E1;
+        const Q1: f64 = 1.395_105_614_657_485_7E2;
+        const Q2: f64 = -1.471_791_292_232_726E2;
+        const Q3: f64 = 7.049_610_280_856_842E1;
+        const Q4: f64 = -1.474_091_372_988_853_8E1;
+
+        let x_abs = self.abs();
+        let big = x_abs.simd_ge(Simd::splat(0.5));
+
+        // for x >= 0: π/2 - 2 arcsin √((1-x)/2) = arcsin x
+        // taylor_arg is less than or equal to 0.5
+        let pade_arg2 = big.select((Simd::splat(1.0) - x_abs) * Simd::splat(0.5), x_abs * x_abs);
+        let pade_arg = big.select(pade_arg2.sqrt(), x_abs);
+        let pade_result = (polynomial_simd!(pade_arg2; P0, P1, P2, P3, P4, P5)
+            / polynomial_simd!(pade_arg2; Q0, Q1, Q2, Q3, Q4, 1.0))
+        .mul_add(pade_arg2 * pade_arg, pade_arg);
+
+        let asin_abs = big.select(
+            Simd::splat(FRAC_PI_2) - (pade_result + pade_result),
+            pade_result,
+        );
+        asin_abs.sign_combine(self)
     }
 
     fn acos(self) -> Self {
-        todo!()
+        Simd::splat(FRAC_PI_2) - self.asin()
     }
 
     fn atan(self) -> Self {
