@@ -4,7 +4,7 @@ use std::{
 };
 
 pub trait FloatBitUtils: SimdFloat {
-    /// Returns zero if sign-bit of the value is zero and sign bit mask otherwise.
+    /// Returns zero if sign-bit of the value is zero or sign bit mask otherwise.
     ///
     /// # Examples
     /// ```
@@ -12,15 +12,15 @@ pub trait FloatBitUtils: SimdFloat {
     /// # use std::simd::prelude::*;
     /// # use simd_addons::math::util::*;
     /// assert_eq!(
-    ///     f32x4::from_array([0.0, -0.0, 1.0, -f32::INFINITY]).sign_mask(),
+    ///     f32x4::from_array([0.0, -0.0, 1.0, -f32::INFINITY]).sign_bit(),
     ///     u32x4::from_array([0, 1, 0, 1]) << 31
     /// );
     /// assert_eq!(
-    ///     f64x4::from_array([0.0, -0.0, 1.0, -f64::INFINITY]).sign_mask(),
+    ///     f64x4::from_array([0.0, -0.0, 1.0, -f64::INFINITY]).sign_bit(),
     ///     u64x4::from_array([0, 1, 0, 1]) << 63
     /// );
     /// ```
-    fn sign_mask(self) -> Self::Bits;
+    fn sign_bit(self) -> Self::Bits;
 
     /// Returns each element with the magnitude `self` and sign combined from signs of `self` and `other`.
     /// Does roughly the same as `self * other.signum()`.
@@ -41,7 +41,7 @@ pub trait FloatBitUtils: SimdFloat {
     where
         Self::Bits: BitXor<Output = Self::Bits>,
     {
-        Self::from_bits(self.to_bits() ^ other.sign_mask())
+        Self::from_bits(self.to_bits() ^ other.sign_bit())
     }
 }
 
@@ -49,7 +49,7 @@ impl<const N: usize> FloatBitUtils for Simd<f32, N>
 where
     LaneCount<N>: SupportedLaneCount,
 {
-    fn sign_mask(self) -> Simd<u32, N> {
+    fn sign_bit(self) -> Simd<u32, N> {
         self.to_bits() & Simd::splat(1 << 31)
     }
 }
@@ -58,7 +58,7 @@ impl<const N: usize> FloatBitUtils for Simd<f64, N>
 where
     LaneCount<N>: SupportedLaneCount,
 {
-    fn sign_mask(self) -> Simd<u64, N> {
+    fn sign_bit(self) -> Simd<u64, N> {
         self.to_bits() & Simd::splat(1 << 63)
     }
 }

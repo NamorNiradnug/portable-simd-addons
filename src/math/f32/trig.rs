@@ -187,7 +187,7 @@ where
         atan_abs = Simd::from_bits(x.to_bits() | self.to_bits())
             .simd_eq(Simd::default())
             .select(Simd::from_bits(x.to_bits() ^ self.to_bits()), atan_abs);
-        x.sign_mask()
+        x.sign_bit()
             .simd_eq(Simd::default())
             .select(atan_abs, Simd::splat(PI) - atan_abs)
             .sign_combine(self)

@@ -1,5 +1,5 @@
 use std::{
-    f64::consts::{FRAC_2_PI, FRAC_PI_2},
+    f64::consts::*,
     simd::{prelude::*, LaneCount, StdFloat, SupportedLaneCount},
 };
 
@@ -65,6 +65,28 @@ where
     let cos = polynomial_simd!(x2; 1.0, -0.5, P0_COS, P1_COS, P2_COS, P3_COS, P4_COS, P5_COS);
 
     (sin, cos)
+}
+
+#[inline]
+fn atan_pade<const N: usize>(t: Simd<f64, N>) -> Simd<f64, N>
+where
+    LaneCount<N>: SupportedLaneCount,
+{
+    const P0: f64 = -6.485_021_904_942_025E1;
+    const P1: f64 = -1.228_866_684_490_136_1E2;
+    const P2: f64 = -7.500_855_792_314_705E1;
+    const P3: f64 = -1.615_753_718_733_365_2E1;
+    const P4: f64 = -8.750_608_600_031_904E-1;
+
+    const Q0: f64 = 1.945_506_571_482_614E2;
+    const Q1: f64 = 4.853_903_996_359_137E2;
+    const Q2: f64 = 4.328_810_604_912_902_7E2;
+    const Q3: f64 = 1.650_270_098_316_988_5E2;
+    const Q4: f64 = 2.485_846_490_142_306_2E1;
+
+    let t2 = t * t;
+    (polynomial_simd!(t2; P0, P1, P2, P3, P4) / polynomial_simd!(t2; Q0, Q1, Q2, Q3, Q4, 1.0))
+        .mul_add(t * t2, t)
 }
 
 impl<const N: usize> Trigonometry for Simd<f64, N>
@@ -153,10 +175,51 @@ where
     }
 
     fn atan(self) -> Self {
-        todo!()
+        let abs_t = self.abs();
+        let not_big = abs_t.simd_le(Simd::splat(SQRT_2 + 1.0));
+        let not_small = abs_t.simd_ge(Simd::splat(0.66));
+        let reduced_arg = {
+            let a = not_big.select(abs_t, Simd::default())
+                - not_small.select(Simd::splat(1.0), Simd::default());
+            let b = not_big.select(Simd::splat(1.0), Simd::default())
+                + not_small.select(abs_t, Simd::default());
+            a / b
+        };
+        let pade_result = atan_pade(reduced_arg);
+        let atan_abs = pade_result
+            + not_small.select(
+                not_big.select(Simd::splat(FRAC_PI_4), Simd::splat(FRAC_PI_2)),
+                Simd::default(),
+            );
+        atan_abs.sign_combine(self)
     }
 
-    fn atan2(self, _x: Self) -> Self {
-        todo!()
+    fn atan2(self, x: Self) -> Self {
+        let abs_y = self.abs();
+        let abs_x = x.abs();
+
+        let not_big = (abs_x * Simd::splat(SQRT_2 + 1.0)).simd_ge(abs_y);
+        let not_small = (abs_x * Simd::splat(0.66)).simd_le(abs_y);
+        let reduced_ratio = {
+            let a =
+                not_big.select(abs_y, Simd::default()) - not_small.select(abs_x, Simd::default());
+            let b =
+                not_big.select(abs_x, Simd::default()) + not_small.select(abs_y, Simd::default());
+            (abs_y.is_finite() | abs_x.is_finite()).select(a / b, Simd::default())
+        };
+        let pade_result = atan_pade(reduced_ratio);
+        let mut atan_abs = pade_result
+            + not_small.select(
+                not_big.select(Simd::splat(FRAC_PI_4), Simd::splat(FRAC_PI_2)),
+                Simd::default(),
+            );
+        // fix NaNs when x and y are both zeros
+        atan_abs = Simd::from_bits(x.to_bits() | self.to_bits())
+            .simd_eq(Simd::<f64, N>::default())
+            .select(Simd::from_bits(x.to_bits() ^ self.to_bits()), atan_abs);
+        x.sign_bit()
+            .simd_eq(Simd::default())
+            .select(atan_abs, Simd::splat(PI) - atan_abs)
+            .sign_combine(self)
     }
 }
