@@ -17,8 +17,10 @@ fn trig_reduction_f32<const N: usize>(x: Simd<f32, N>) -> (Simd<f32, N>, Simd<u3
 where
     LaneCount<N>: SupportedLaneCount,
 {
+    // TODO: INPUT_LIMIT should be larger
     const INPUT_LIMIT: f32 = 1e5;
 
+    // src: https://github.com/vectorclass/version2/blob/master/vectormath_trig.h#L241-L243
     const PI2_A: f32 = 0.785_156_25 * 2.0;
     const PI2_B: f32 = 2.418_756_5E-4 * 2.0;
     const PI2_C: f32 = 3.774_895E-8 * 2.0;
@@ -30,7 +32,7 @@ where
         .select(abs_x, Simd::default());
     let quadrants_float = (abs_x * Simd::splat(FRAC_2_PI)).round();
 
-    // SAFETY: values in `quadrants_float` are finite and between 0 and 1e5
+    // SAFETY: INPUT_LIMIT guaratees that `quadrants_float` are representable in u32
     let quadrants = unsafe { quadrants_float.to_int_unchecked::<u32>() };
 
     let reduced_x = quadrants_float.mul_add(
@@ -44,7 +46,7 @@ where
     (reduced_x, quadrants)
 }
 
-/// Calculates sine of and cosine Taylor approximations of `x`. Doesn't perform any reductions, overflow
+/// Calculates sine and cosine Taylor approximations of `x`. Doesn't perform any reductions, overflow
 /// checking, etc.
 #[inline]
 fn sin_cos_taylor<const N: usize>(x: Simd<f32, N>) -> (Simd<f32, N>, Simd<f32, N>)
@@ -53,6 +55,7 @@ where
 {
     // These coefficients are not exactly the Taylor expansion but its approximation which
     // gives better accuracy on [-π/4, π/4].
+    // src: https://github.com/vectorclass/version2/blob/master/vectormath_trig.h#L233-L239
     const P0_SIN: f32 = -1.666_665_5E-1;
     const P1_SIN: f32 = 8.332_161E-3;
     const P2_SIN: f32 = -1.951_529_6E-4;
@@ -73,6 +76,7 @@ fn atan_taylor<const N: usize>(x: Simd<f32, N>) -> Simd<f32, N>
 where
     LaneCount<N>: SupportedLaneCount,
 {
+    // src: https://github.com/vectorclass/version2/blob/master/vectormath_trig.h#L924-L927
     const P0: f32 = -3.333_295E-1;
     const P1: f32 = 1.997_771_1E-1;
     const P2: f32 = -1.387_768_5E-1;
@@ -111,6 +115,7 @@ where
 
     #[inline]
     fn asin(self) -> Self {
+        // src: https://github.com/vectorclass/version2/blob/master/vectormath_trig.h#L711-L715
         const P0: f32 = 1.666_675_2E-1;
         const P1: f32 = 7.495_300_3E-2;
         const P2: f32 = 4.547_002_6E-2;

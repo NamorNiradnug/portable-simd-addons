@@ -13,8 +13,10 @@ fn trig_reduction<const N: usize>(x: Simd<f64, N>) -> (Simd<f64, N>, Simd<u64, N
 where
     LaneCount<N>: SupportedLaneCount,
 {
+    // TODO: INPUT_LIMIT should be larger
     const INPUT_LIMIT: f64 = 1e13;
 
+    // src: https://github.com/vectorclass/version2/blob/master/vectormath_trig.h#L64-L66
     const PI2_A: f64 = 7.853_981_554_508_209E-1 * 2.;
     const PI2_B: f64 = 7.946_627_356_147_928E-9 * 2.;
     const PI2_C: f64 = 3.061_616_997_868_383E-17 * 2.;
@@ -26,7 +28,7 @@ where
         .select(abs_x, Simd::default());
     let quadrants_float = (abs_x * Simd::splat(FRAC_2_PI)).round();
 
-    // SAFETY: values in `quadrants_float` are finite and between 0 and 1e13
+    // SAFETY: INPUT_LIMIT guarantees that values in `quadrants_float` are representable in u64
     let quadrants = unsafe { quadrants_float.to_int_unchecked::<u64>() };
 
     let reduced_x = quadrants_float.mul_add(
@@ -45,6 +47,7 @@ fn sin_cos_taylor<const N: usize>(x: Simd<f64, N>) -> (Simd<f64, N>, Simd<f64, N
 where
     LaneCount<N>: SupportedLaneCount,
 {
+    // src: https://github.com/vectorclass/version2/blob/master/vectormath_trig.h#L50-L62
     const P0_SIN: f64 = -1.666_666_666_666_663E-1;
     const P1_SIN: f64 = 8.333_333_333_322_118E-3;
     const P2_SIN: f64 = -1.984_126_982_958_954E-4;
@@ -72,6 +75,7 @@ fn atan_pade<const N: usize>(t: Simd<f64, N>) -> Simd<f64, N>
 where
     LaneCount<N>: SupportedLaneCount,
 {
+    // src: https://github.com/vectorclass/version2/blob/master/vectormath_trig.h#L799-L809
     const P0: f64 = -6.485_021_904_942_025E1;
     const P1: f64 = -1.228_866_684_490_136_1E2;
     const P2: f64 = -7.500_855_792_314_705E1;
@@ -117,6 +121,7 @@ where
 
     #[inline]
     fn tan(self) -> Self {
+        // src: https://github.com/vectorclass/version2/blob/master/vectormath_trig.h#L444-L451
         const P0: f64 = -1.795_652_519_764_848_8E7;
         const P1: f64 = 1.153_516_648_385_874_2E6;
         const P2: f64 = -1.309_369_391_813_837_9E4;
@@ -139,6 +144,7 @@ where
     }
 
     fn asin(self) -> Self {
+        // src: https://github.com/vectorclass/version2/blob/master/vectormath_trig.h#L574-L585
         const P0: f64 = -8.198_089_802_484_825;
         const P1: f64 = 1.956_261_983_317_594_8E1;
         const P2: f64 = -1.626_247_967_210_700_2E1;
