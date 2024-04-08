@@ -1,1 +1,2 @@
 mod trig;
+mod exp;
