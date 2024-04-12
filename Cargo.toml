@@ -1,0 +1,16 @@
+[package]
+authors = ["NamorNiradnug"]
+name = "portable-simd-addons"
+version = "0.1.0"
+edition = "2021"
+repository = "https://github.com/NamorNiradnug/portable-simd-addons"
+license = "MIT"
+keywords = ["simd", "math"]
+description = "Portable SIMD-based functions and algorithms"
+
+[lib]
+name = "simd_addons"
+
+[dev-dependencies]
+approx = "0.5"
+paste = "1.0"
