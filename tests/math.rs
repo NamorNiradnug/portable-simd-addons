@@ -26,6 +26,10 @@ approx_test_simd_fn!(
         asin: (-1.0..1.0).linspace(100_000);
         acos: (-1.0..1.0).linspace(100_000);
         atan: (-1e3..1e3).linspace(100_000), [f64::INFINITY, -f64::INFINITY];
+
+        exp: (-709.0..709.0).linspace(500_000), [1e3, -1e3, f64::INFINITY, -f64::INFINITY];
+        exp_m1: (-709.0..709.0).linspace(500_000), [1e3, -1e3, f64::INFINITY, -f64::INFINITY];
+        exp2: (-1024.0..1023.0).linspace(500_000), [1e3, -1e3, f64::INFINITY, -f64::INFINITY];
     }
 );
 
