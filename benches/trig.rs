@@ -1,4 +1,5 @@
-#![feature(portable_simd, test, array_chunks)]
+#![feature(portable_simd, test, array_chunks, core_intrinsics)]
+#![allow(internal_features)]
 extern crate test;
 
 #[path = "../tests/common/mod.rs"]
@@ -47,6 +48,16 @@ fn vec_exp_bench(b: &mut test::Bencher) {
         for x in test::black_box(data.array_chunks::<64>()) {
             test::black_box(Simd::from_array(*x).exp());
         }
+    });
+}
+
+#[bench]
+fn llvm_vec_sin(b: &mut test::Bencher) {
+    let data: Vec<_> = (-1e4..1e4f32).linspace(BENCH_POINTS).collect();
+    b.iter(|| {
+        for x in data.array_chunks::<64>() {
+            test::black_box(unsafe { core::intrinsics::simd::simd_fsin(Simd::from_array(*x)) });
+        }
     })
 }
 
@@ -58,4 +69,14 @@ fn scalar_exp_bench(b: &mut test::Bencher) {
             test::black_box(x.exp());
         }
     });
+}
+
+#[bench]
+fn llvm_vec_exp(b: &mut test::Bencher) {
+    let data: Vec<_> = (-80e4..80f32).linspace(BENCH_POINTS).collect();
+    b.iter(|| {
+        for x in data.array_chunks::<64>() {
+            test::black_box(unsafe { core::intrinsics::simd::simd_fexp(Simd::from_array(*x)) });
+        }
+    })
 }
