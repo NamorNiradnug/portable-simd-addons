@@ -21,9 +21,9 @@ where
     const INPUT_LIMIT: f32 = 1e5;
 
     // src: https://github.com/vectorclass/version2/blob/master/vectormath_trig.h#L241-L243
-    const PI4_A: f32 = 0.785_156_25 * 2.0;
-    const PI4_B: f32 = 2.418_756_5E-4 * 2.0;
-    const PI4_C: f32 = 3.774_895E-8 * 2.0;
+    const PI2_A: f32 = 0.785_156_25 * 2.0;
+    const PI2_B: f32 = 2.418_756_5E-4 * 2.0;
+    const PI2_C: f32 = 3.774_895E-8 * 2.0;
 
     let mut abs_x = x.abs();
     // NaNs, INFs and large values are mapped to 0
@@ -36,10 +36,10 @@ where
     let quadrants = unsafe { quadrants_float.to_int_unchecked::<u32>() };
 
     let reduced_x = quadrants_float.mul_add(
-        Simd::splat(-PI4_C),
+        Simd::splat(-PI2_C),
         quadrants_float.mul_add(
-            Simd::splat(-PI4_B),
-            quadrants_float.mul_add(Simd::splat(-PI4_A), abs_x),
+            Simd::splat(-PI2_B),
+            quadrants_float.mul_add(Simd::splat(-PI2_A), abs_x),
         ),
     );
 

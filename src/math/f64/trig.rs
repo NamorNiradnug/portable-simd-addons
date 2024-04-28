@@ -17,9 +17,9 @@ where
     const INPUT_LIMIT: f64 = 1e13;
 
     // src: https://github.com/vectorclass/version2/blob/master/vectormath_trig.h#L64-L66
-    const PI4_A: f64 = 7.853_981_554_508_209E-1 * 2.;
-    const PI4_B: f64 = 7.946_627_356_147_928E-9 * 2.;
-    const PI4_C: f64 = 3.061_616_997_868_383E-17 * 2.;
+    const PI2_A: f64 = 7.853_981_554_508_209E-1 * 2.;
+    const PI2_B: f64 = 7.946_627_356_147_928E-9 * 2.;
+    const PI2_C: f64 = 3.061_616_997_868_383E-17 * 2.;
 
     let mut abs_x = x.abs();
     // NaNs, INFs and large values are mapped to 0
@@ -32,10 +32,10 @@ where
     let quadrants = unsafe { quadrants_float.to_int_unchecked::<u64>() };
 
     let reduced_x = quadrants_float.mul_add(
-        Simd::splat(-PI4_C),
+        Simd::splat(-PI2_C),
         quadrants_float.mul_add(
-            Simd::splat(-PI4_B),
-            quadrants_float.mul_add(Simd::splat(-PI4_A), abs_x),
+            Simd::splat(-PI2_B),
+            quadrants_float.mul_add(Simd::splat(-PI2_A), abs_x),
         ),
     );
 
