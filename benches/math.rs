@@ -11,6 +11,47 @@ use std::simd::prelude::*;
 
 const BENCH_POINTS: usize = 200_000;
 
+#[cfg(feature = "vectorclass_bench")]
+mod vcl_bench {
+    use super::Linspace;
+    use super::BENCH_POINTS;
+
+    #[cfg(all(not(target_arch = "x86"), not(target_arch = "x86_64")))]
+    compile_error!("VCL supports only x86-compatible platforms");
+
+    #[cxx::bridge(namespace = "bench")]
+    mod ffi {
+        unsafe extern "C++" {
+            include!("portable-simd-addons/benches/vclbench.hpp");
+            unsafe fn ExpVCL(x: *const f32, result: *mut f32);
+            unsafe fn SinVCL(x: *const f32, result: *mut f32);
+            unsafe fn ExpScalar(x: *const f32, result: *mut f32);
+            unsafe fn SinScalar(x: *const f32, result: *mut f32);
+        }
+    }
+
+    macro_rules! bench_cpp {
+        ($range: expr, $func: tt) => {
+            paste::paste! {
+            #[allow(non_snake_case)]
+            #[bench]
+            fn [< bench_ $func _cpp >](b: &mut test::Bencher) {
+                let data: Vec<_> = ($range).linspace(BENCH_POINTS).collect();
+                let mut result = vec![0.0; BENCH_POINTS];
+                b.iter(|| {
+                    unsafe { ffi::$func(data.as_ptr(), result.as_mut_ptr()) }
+                });
+            }
+            }
+        };
+    }
+
+    bench_cpp!(-1e4..1e4f32, SinVCL);
+    bench_cpp!(-1e4..1e4f32, SinScalar);
+    bench_cpp!(-50.0..50.0f32, ExpVCL);
+    bench_cpp!(-50.0..50.0f32, ExpScalar);
+}
+
 macro_rules! bench_simd_vs_scalar {
     ($range: expr, $func: tt, $ftype: ty $(, $coresimdfn: tt )?) => {
         paste::paste! {
@@ -18,9 +59,13 @@ macro_rules! bench_simd_vs_scalar {
         fn [< bench_ $func _ $ftype _vec >](b: &mut test::Bencher) {
             #[allow(clippy::all)]
             let data: Vec<_> = ($range as $ftype).linspace(BENCH_POINTS).collect();
+            let mut result: Vec<_> = vec![0.0; BENCH_POINTS];
             b.iter(|| {
-                for x in test::black_box(data.array_chunks::<64>()) {
-                    test::black_box(Simd::from_array(*x).$func());
+                for (x, res) in std::iter::zip(
+                    data.array_chunks::<64>(),
+                    result.array_chunks_mut::<64>()
+                ) {
+                    *res = Simd::from_array(*x).$func().to_array();
                 }
             })
         }
@@ -29,9 +74,10 @@ macro_rules! bench_simd_vs_scalar {
         fn [< bench_ $func _ $ftype _scalar >](b: &mut test::Bencher) {
             #[allow(clippy::all)]
             let data: Vec<_> = ($range as $ftype).linspace(BENCH_POINTS).collect();
+            let mut result = vec![0.0; BENCH_POINTS];
             b.iter(|| {
-                for x in test::black_box(&data) {
-                    test::black_box(x.$func());
+                for (x, res) in std::iter::zip(&data, &mut result) {
+                    *res = x.$func();
                 }
             });
         }
@@ -41,9 +87,15 @@ macro_rules! bench_simd_vs_scalar {
         fn [< bench_ $func _ $ftype _core_simd >](b: &mut test::Bencher) {
             #[allow(clippy::all)]
             let data: Vec<_> = ($range as $ftype).linspace(BENCH_POINTS).collect();
+            let mut result = vec![0.0; BENCH_POINTS];
             b.iter(|| {
-                for x in test::black_box(data.array_chunks::<64>()) {
-                    test::black_box(unsafe { core::intrinsics::simd::$coresimdfn(Simd::from_array(*x)) });
+                for (x, res) in std::iter::zip(
+                    data.array_chunks::<64>(),
+                    result.array_chunks_mut::<64>()
+                ) {
+                    *res = unsafe {
+                        core::intrinsics::simd::$coresimdfn(Simd::from_array(*x))
+                    }.to_array();
                 }
             })
         }

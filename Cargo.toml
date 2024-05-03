@@ -14,3 +14,10 @@ name = "simd_addons"
 [dev-dependencies]
 approx = "0.5"
 paste = "1.0"
+cxx = "1.0"
+
+[build-dependencies]
+cxx-build = { version = "1.0", optional = true }
+
+[features]
+vectorclass_bench = ["cxx-build"]
