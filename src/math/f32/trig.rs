@@ -6,7 +6,7 @@ use std::{
     f32::consts::*,
     simd::{
         cmp::{SimdPartialEq, SimdPartialOrd},
-        num::SimdFloat,
+        num::{SimdFloat, SimdInt},
         LaneCount, Mask, Simd, StdFloat, SupportedLaneCount,
     },
 };
@@ -33,14 +33,11 @@ where
     let quadrants_float = (abs_x * Simd::splat(FRAC_2_PI)).round();
 
     // SAFETY: INPUT_LIMIT guaratees that `quadrants_float` are representable in u32
-    let quadrants = unsafe { quadrants_float.to_int_unchecked::<u32>() };
+    let quadrants = unsafe { quadrants_float.to_int_unchecked::<i32>().cast() };
 
     let reduced_x = quadrants_float.mul_add(
         Simd::splat(-PI2_C),
-        quadrants_float.mul_add(
-            Simd::splat(-PI2_B),
-            quadrants_float.mul_add(Simd::splat(-PI2_A), abs_x),
-        ),
+        quadrants_float.mul_add(Simd::splat(-PI2_B - PI2_A), abs_x),
     );
 
     (reduced_x, quadrants)
@@ -98,9 +95,7 @@ where
 
         let sin_cos_swap = (quadrants & Simd::splat(1)).simd_eq(Simd::default());
         let sin_vals = sin_cos_swap.select(sin, cos);
-        sin_vals
-            .sign_combine(self)
-            .sign_combine(Simd::from_bits(quadrants << 30))
+        sin_vals.sign_combine(Simd::from_bits(self.to_bits() ^ (quadrants << 30)))
     }
 
     #[inline]

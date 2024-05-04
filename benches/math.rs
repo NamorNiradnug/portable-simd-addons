@@ -59,13 +59,16 @@ macro_rules! bench_simd_vs_scalar {
         fn [< bench_ $func _ $ftype _vec >](b: &mut test::Bencher) {
             #[allow(clippy::all)]
             let data: Vec<_> = ($range as $ftype).linspace(BENCH_POINTS).collect();
-            let mut result: Vec<_> = vec![0.0; BENCH_POINTS];
+            let x = data.as_slice();
+            let mut result_vec: Vec<_> = vec![0.0; BENCH_POINTS];
+            let result = result_vec.as_mut_slice();
             b.iter(|| {
-                for (x, res) in std::iter::zip(
-                    data.array_chunks::<64>(),
-                    result.array_chunks_mut::<64>()
-                ) {
-                    *res = Simd::from_array(*x).$func().to_array();
+                assert_eq!(x.len(), BENCH_POINTS);
+                assert_eq!(result.len(), BENCH_POINTS);
+                for i in (0..BENCH_POINTS).step_by(64) {
+                    Simd::<_, 64>::from_slice(&x[i..])
+                        .$func()
+                        .copy_to_slice(&mut result[i..]);
                 }
             })
         }
@@ -76,6 +79,8 @@ macro_rules! bench_simd_vs_scalar {
             let data: Vec<_> = ($range as $ftype).linspace(BENCH_POINTS).collect();
             let mut result = vec![0.0; BENCH_POINTS];
             b.iter(|| {
+                assert_eq!(result.len(), BENCH_POINTS);
+                assert_eq!(data.len(), BENCH_POINTS);
                 for (x, res) in std::iter::zip(&data, &mut result) {
                     *res = x.$func();
                 }
@@ -87,17 +92,19 @@ macro_rules! bench_simd_vs_scalar {
         fn [< bench_ $func _ $ftype _core_simd >](b: &mut test::Bencher) {
             #[allow(clippy::all)]
             let data: Vec<_> = ($range as $ftype).linspace(BENCH_POINTS).collect();
-            let mut result = vec![0.0; BENCH_POINTS];
+            let x = data.as_slice();
+            let mut result_vec: Vec<_> = vec![0.0; BENCH_POINTS];
+            let result = result_vec.as_mut_slice();
             b.iter(|| {
-                for (x, res) in std::iter::zip(
-                    data.array_chunks::<64>(),
-                    result.array_chunks_mut::<64>()
-                ) {
-                    *res = unsafe {
-                        core::intrinsics::simd::$coresimdfn(Simd::from_array(*x))
-                    }.to_array();
+                assert_eq!(x.len(), BENCH_POINTS);
+                assert_eq!(result.len(), BENCH_POINTS);
+                for i in (0..BENCH_POINTS).step_by(64) {
+                    unsafe { core::intrinsics::simd::$coresimdfn(
+                        Simd::<_, 64>::from_slice(&x[i..]))
+                    }
+                    .copy_to_slice(&mut result[i..]);
                 }
-            })
+            });
         }
         )?
         }

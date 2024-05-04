@@ -29,14 +29,11 @@ where
     let quadrants_float = (abs_x * Simd::splat(FRAC_2_PI)).round();
 
     // SAFETY: INPUT_LIMIT guarantees that values in `quadrants_float` are representable in u64
-    let quadrants = unsafe { quadrants_float.to_int_unchecked::<u64>() };
+    let quadrants = unsafe { quadrants_float.to_int_unchecked::<i64>().cast() };
 
     let reduced_x = quadrants_float.mul_add(
         Simd::splat(-PI2_C),
-        quadrants_float.mul_add(
-            Simd::splat(-PI2_B),
-            quadrants_float.mul_add(Simd::splat(-PI2_A), abs_x),
-        ),
+        quadrants_float.mul_add(Simd::splat(-PI2_B - PI2_A), abs_x),
     );
 
     (reduced_x, quadrants)
@@ -104,9 +101,7 @@ where
 
         let sin_cos_swap = (quadrants & Simd::splat(1)).simd_eq(Simd::default());
         let sin_vals = sin_cos_swap.select(sin, cos);
-        sin_vals
-            .sign_combine(self)
-            .sign_combine(Simd::from_bits(quadrants << 62))
+        sin_vals.sign_combine(Simd::from_bits(self.to_bits() ^ (quadrants << 62)))
     }
 
     #[inline]
