@@ -13,7 +13,7 @@ use std::{
 
 /// π/4 reduction of `x`. Large values (greater than 10⁵) are treated as zeros.
 #[inline]
-fn trig_reduction_f32<const N: usize>(x: Simd<f32, N>) -> (Simd<f32, N>, Simd<u32, N>)
+fn trig_reduction<const N: usize>(x: Simd<f32, N>) -> (Simd<f32, N>, Simd<u32, N>)
 where
     LaneCount<N>: SupportedLaneCount,
 {
@@ -90,7 +90,7 @@ where
 {
     #[inline]
     fn sin(self) -> Self {
-        let (reduced_x, quadrants) = trig_reduction_f32(self);
+        let (reduced_x, quadrants) = trig_reduction(self);
         let (sin, cos) = sin_cos_taylor(reduced_x);
 
         let sin_cos_swap = (quadrants & Simd::splat(1)).simd_eq(Simd::default());
@@ -100,7 +100,7 @@ where
 
     #[inline]
     fn cos(self) -> Self {
-        let (reduced_x, quadrants) = trig_reduction_f32(self);
+        let (reduced_x, quadrants) = trig_reduction(self);
         let (sin, cos) = sin_cos_taylor(reduced_x);
 
         let sin_cos_swap = (quadrants & Simd::splat(1)).simd_eq(Simd::default());
