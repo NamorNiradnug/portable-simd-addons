@@ -26,7 +26,10 @@ where
     abs_x = abs_x
         .simd_lt(Simd::splat(INPUT_LIMIT))
         .select(abs_x, Simd::default());
-    let quadrants_float = (abs_x * Simd::splat(FRAC_2_PI)).round();
+    // (abs_x * Simd::splat(FRAC_2_PI)).round() generates more instruntions and hence is slower
+    let quadrants_float = abs_x
+        .mul_add(Simd::splat(FRAC_2_PI), Simd::splat(0.5))
+        .trunc();
 
     // SAFETY: INPUT_LIMIT guarantees that values in `quadrants_float` are representable in u64
     let quadrants = unsafe { quadrants_float.to_int_unchecked::<i64>().cast() };
