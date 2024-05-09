@@ -131,7 +131,8 @@ where
             .mul_add(taylor_arg * taylor_arg2, taylor_arg);
 
         let asin_abs = big.select(
-            Simd::splat(FRAC_PI_2) - (taylor_result + taylor_result),
+            taylor_result.mul_add(Simd::splat(-2.0), Simd::splat(FRAC_PI_2)),
+            //Simd::splat(FRAC_PI_2) - (taylor_result + taylor_result),
             taylor_result,
         );
         asin_abs.sign_combine(self)

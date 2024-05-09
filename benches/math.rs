@@ -23,10 +23,12 @@ mod vcl_bench {
     mod ffi {
         unsafe extern "C++" {
             include!("portable-simd-addons/benches/vclbench.hpp");
-            unsafe fn ExpVCL(x: *const f32, result: *mut f32);
-            unsafe fn SinVCL(x: *const f32, result: *mut f32);
-            unsafe fn ExpScalar(x: *const f32, result: *mut f32);
-            unsafe fn SinScalar(x: *const f32, result: *mut f32);
+            unsafe fn exp_f32_vcl(x: *const f32, result: *mut f32);
+            unsafe fn sin_f32_vcl(x: *const f32, result: *mut f32);
+            unsafe fn asin_f32_vcl(x: *const f32, result: *mut f32);
+            unsafe fn atan_f32_vcl(x: *const f32, result: *mut f32);
+            unsafe fn exp_f32_scalar(x: *const f32, result: *mut f32);
+            unsafe fn sin_f32_scalar(x: *const f32, result: *mut f32);
         }
     }
 
@@ -46,10 +48,12 @@ mod vcl_bench {
         };
     }
 
-    bench_cpp!(-1e4..1e4f32, SinVCL);
-    bench_cpp!(-1e4..1e4f32, SinScalar);
-    bench_cpp!(-50.0..50.0f32, ExpVCL);
-    bench_cpp!(-50.0..50.0f32, ExpScalar);
+    bench_cpp!(-1e4..1e4f32, sin_f32_vcl);
+    bench_cpp!(-1e4..1e4f32, sin_f32_scalar);
+    bench_cpp!(-50.0..50.0f32, exp_f32_vcl);
+    bench_cpp!(-50.0..50.0f32, exp_f32_scalar);
+    bench_cpp!(-1.0..1.0f32, asin_f32_vcl);
+    bench_cpp!(-1e3..1e3f32, atan_f32_vcl);
 }
 
 macro_rules! bench_simd_vs_scalar {
@@ -113,5 +117,12 @@ macro_rules! bench_simd_vs_scalar {
 
 bench_simd_vs_scalar!(-1e4..1e4, sin, f32, simd_fsin);
 bench_simd_vs_scalar!(-1e4..1e4, sin, f64, simd_fsin);
+bench_simd_vs_scalar!(-1.0..1.0, asin, f32);
 bench_simd_vs_scalar!(-1e4..1e4, cos, f32, simd_fcos);
 bench_simd_vs_scalar!(-1e4..1e4, cos, f64, simd_fcos);
+bench_simd_vs_scalar!(-1e3..1e3, atan, f32);
+
+#[allow(unused)]
+fn generate_atan2_bench_sample() -> (Vec<f32>, Vec<f32>) {
+    todo!()
+}
