@@ -19,7 +19,7 @@ macro_rules! bench_simd_vs_scalar {
             #[allow(clippy::all)]
             let data: Vec<_> = ($range as $ftype).linspace(BENCH_POINTS).collect();
             b.iter(|| {
-                for x in data.array_chunks::<64>() {
+                for x in test::black_box(data.array_chunks::<64>()) {
                     test::black_box(Simd::from_array(*x).$func());
                 }
             })
@@ -30,7 +30,7 @@ macro_rules! bench_simd_vs_scalar {
             #[allow(clippy::all)]
             let data: Vec<_> = ($range as $ftype).linspace(BENCH_POINTS).collect();
             b.iter(|| {
-                for x in &data {
+                for x in test::black_box(&data) {
                     test::black_box(x.$func());
                 }
             });
@@ -42,7 +42,7 @@ macro_rules! bench_simd_vs_scalar {
             #[allow(clippy::all)]
             let data: Vec<_> = ($range as $ftype).linspace(BENCH_POINTS).collect();
             b.iter(|| {
-                for x in data.array_chunks::<64>() {
+                for x in test::black_box(data.array_chunks::<64>()) {
                     test::black_box(unsafe { core::intrinsics::simd::$coresimdfn(Simd::from_array(*x)) });
                 }
             })
