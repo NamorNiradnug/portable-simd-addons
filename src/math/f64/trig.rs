@@ -162,7 +162,7 @@ where
         let big = x_abs.simd_ge(Simd::splat(0.5));
 
         // for x >= 0: π/2 - 2 arcsin √((1-x)/2) = arcsin x
-        // taylor_arg is less than or equal to 0.5
+        // pade_arg is less than or equal to 0.5
         let pade_arg2 = big.select((Simd::splat(1.0) - x_abs) * Simd::splat(0.5), x_abs * x_abs);
         let pade_arg = big.select(pade_arg2.sqrt(), x_abs);
         let pade_result = (polynomial_simd!(pade_arg2; P0, P1, P2, P3, P4, P5)

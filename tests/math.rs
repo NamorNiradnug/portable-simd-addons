@@ -4,7 +4,7 @@ mod common;
 
 use common::Linspace;
 
-use simd_addons::math::Trigonometry;
+use simd_addons::math::{Exponent, Trigonometry};
 
 approx_test_simd_fn!(
     f32 {
@@ -14,6 +14,10 @@ approx_test_simd_fn!(
         asin: (-1.0..1.0).linspace(100_000);
         acos: (-1.0..1.0).linspace(100_000);
         atan: (-1e3..1e3).linspace(100_000), [f32::INFINITY, -f32::INFINITY];
+
+        exp: (-88.0..88.0).linspace(100_000), [1e3, -1e3, f32::INFINITY, -f32::INFINITY];
+        exp_m1: (-88.0..88.0).linspace(100_000), [1e3, -1e3, f32::INFINITY, -f32::INFINITY];
+        exp2: (-127.0..127.0).linspace(100_000), [1e3, -1e3, f32::INFINITY, -f32::INFINITY];
     }
     f64 {
         sin: (-1e5..1e5).linspace(1_000_000);
@@ -22,6 +26,10 @@ approx_test_simd_fn!(
         asin: (-1.0..1.0).linspace(100_000);
         acos: (-1.0..1.0).linspace(100_000);
         atan: (-1e3..1e3).linspace(100_000), [f64::INFINITY, -f64::INFINITY];
+
+        exp: (-709.0..709.0).linspace(500_000), [1e3, -1e3, f64::INFINITY, -f64::INFINITY];
+        exp_m1: (-709.0..709.0).linspace(500_000), [1e3, -1e3, f64::INFINITY, -f64::INFINITY];
+        exp2: (-1024.0..1023.0).linspace(500_000), [1e3, -1e3, f64::INFINITY, -f64::INFINITY];
     }
 );
 
