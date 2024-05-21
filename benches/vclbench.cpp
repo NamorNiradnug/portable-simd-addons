@@ -8,6 +8,7 @@ static constexpr size_t BENCH_POINTS = 200'000;
 
 using Vec16fFunc = vcl::Vec16f (*)(vcl::Vec16f);
 
+namespace {
 template <Vec16fFunc func>
 void vcl_bench_f32_impl(const float *x, float *result) {
     vcl::Vec16f x_vec;
@@ -17,11 +18,29 @@ void vcl_bench_f32_impl(const float *x, float *result) {
     }
 }
 
+template <float (*func)(float)>
+void scalar_bench_f32_impl(const float *x, float *result) {
+    for (size_t i = 0; i < BENCH_POINTS; ++i) {
+        result[i] = func(x[i]);
+    }
+}
+}  // namespace
+
 namespace bench {
-void exp_f32_vcl(const float *x, float *result) { vcl_bench_f32_impl<vcl::exp>(x, result); }
-void sin_f32_vcl(const float *x, float *result) { vcl_bench_f32_impl<vcl::sin>(x, result); }
-void asin_f32_vcl(const float *x, float *result) { vcl_bench_f32_impl<vcl::asin>(x, result); }
-void atan_f32_vcl(const float *x, float *result) { vcl_bench_f32_impl<vcl::atan>(x, result); }
+
+#define IMPL_BENCH_F32_VCL(func) \
+    void func##_f32_vcl(const float *x, float *result) { vcl_bench_f32_impl<vcl::func>(x, result); }
+
+IMPL_BENCH_F32_VCL(exp)
+IMPL_BENCH_F32_VCL(exp2)
+IMPL_BENCH_F32_VCL(sin)
+IMPL_BENCH_F32_VCL(cos)
+IMPL_BENCH_F32_VCL(tan)
+IMPL_BENCH_F32_VCL(asin)
+IMPL_BENCH_F32_VCL(acos)
+IMPL_BENCH_F32_VCL(atan)
+
+#undef IMPL_BENCH_F32_VCL
 
 void atan2_f32_vcl(const float *x, const float *y, float *result) {
     vcl::Vec16f x_vec;
@@ -33,15 +52,18 @@ void atan2_f32_vcl(const float *x, const float *y, float *result) {
     }
 }
 
-void exp_f32_scalar(const float *x, float *result) {
-    for (size_t i = 0; i < BENCH_POINTS; ++i) {
-        result[i] = expf(x[i]);
-    }
-}
+#define IMPL_BENCH_F32_SCALAR(func) \
+    void func##_f32_scalar(const float *x, float *result) { scalar_bench_f32_impl<func##f>(x, result); }
 
-void sin_f32_scalar(const float *x, float *result) {
-    for (size_t i = 0; i < BENCH_POINTS; ++i) {
-        result[i] = sinf(x[i]);
-    }
-}
+IMPL_BENCH_F32_SCALAR(exp)
+IMPL_BENCH_F32_SCALAR(exp2)
+IMPL_BENCH_F32_SCALAR(sin)
+IMPL_BENCH_F32_SCALAR(cos)
+IMPL_BENCH_F32_SCALAR(tan)
+IMPL_BENCH_F32_SCALAR(asin)
+IMPL_BENCH_F32_SCALAR(acos)
+IMPL_BENCH_F32_SCALAR(atan)
+
+#undef IMPL_BENCH_F32_SCALAR
+
 }  // namespace bench

@@ -1,12 +1,18 @@
 #pragma once
 
 namespace bench {
-void exp_f32_vcl(const float *x, float *result);
-void sin_f32_vcl(const float *x, float *result);
-void asin_f32_vcl(const float *x, float *result);
-void atan_f32_vcl(const float *x, float *result);
-void atan2_f32_vcl(const float *x, const float *y, float *result);
+#define DEF_BENCHES_F32(func)                          \
+    void func##_f32_vcl(const float *x, float *result); \
+    void func##_f32_scalar(const float *x, float *result);
 
-void exp_f32_scalar(const float *x, float *result);
-void sin_f32_scalar(const float *x, float *result);
+DEF_BENCHES_F32(exp)
+DEF_BENCHES_F32(exp2)
+DEF_BENCHES_F32(sin)
+DEF_BENCHES_F32(cos)
+DEF_BENCHES_F32(tan)
+DEF_BENCHES_F32(asin)
+DEF_BENCHES_F32(acos)
+DEF_BENCHES_F32(atan)
+
+#undef DEF_BENCHES_F32
 }  // namespace bench
