@@ -25,6 +25,7 @@ mod cpp_benches {
 
             unsafe fn exp_f32_vcl(x: *const f32, result: *mut f32);
             unsafe fn exp2_f32_vcl(x: *const f32, result: *mut f32);
+            unsafe fn expm1_f32_vcl(x: *const f32, result: *mut f32);
 
             unsafe fn sin_f32_vcl(x: *const f32, result: *mut f32);
             unsafe fn cos_f32_vcl(x: *const f32, result: *mut f32);
@@ -36,6 +37,7 @@ mod cpp_benches {
 
             unsafe fn exp_f32_scalar(x: *const f32, result: *mut f32);
             unsafe fn exp2_f32_scalar(x: *const f32, result: *mut f32);
+            unsafe fn expm1_f32_scalar(x: *const f32, result: *mut f32);
 
             unsafe fn sin_f32_scalar(x: *const f32, result: *mut f32);
             unsafe fn cos_f32_scalar(x: *const f32, result: *mut f32);
@@ -77,6 +79,7 @@ mod cpp_benches {
     bench_cpp!(
         exp, -50.0..50.0f32;
         exp2, -50.0..50.0f32;
+        expm1, -50.0..50.0f32;
         sin, -1e4..1e4f32;
         cos, -1e4..1e4f32;
         tan, -1e4..1e4f32;
@@ -88,6 +91,9 @@ mod cpp_benches {
 
 macro_rules! bench_simd_vs_scalar {
     ($range: expr, $func: tt, $ftype: ty) => {
+        bench_simd_vs_scalar!($range, $func, $ftype, 64);
+    };
+    ($range: expr, $func: tt, $ftype: ty, $vecsize: literal) => {
         paste::paste! {
         #[bench]
         fn [< bench_ $func _ $ftype _vec >](b: &mut test::Bencher) {
@@ -99,8 +105,8 @@ macro_rules! bench_simd_vs_scalar {
             b.iter(|| {
                 assert_eq!(x.len(), BENCH_POINTS);
                 assert_eq!(result.len(), BENCH_POINTS);
-                for i in (0..BENCH_POINTS).step_by(64) {
-                    Simd::<_, 64>::from_slice(&x[i..])
+                for i in (0..BENCH_POINTS).step_by($vecsize) {
+                    Simd::<_, $vecsize>::from_slice(&x[i..])
                         .$func()
                         .copy_to_slice(&mut result[i..]);
                 }
@@ -124,10 +130,12 @@ macro_rules! bench_simd_vs_scalar {
     };
 }
 
-bench_simd_vs_scalar!(-50.0..50, exp, f32);
+bench_simd_vs_scalar!(-50.0..50, exp, f32, 16);
 bench_simd_vs_scalar!(-50.0..50, exp, f64);
-bench_simd_vs_scalar!(-50.0..50, exp2, f32);
+bench_simd_vs_scalar!(-50.0..50, exp2, f32, 16);
 bench_simd_vs_scalar!(-50.0..50, exp2, f64);
+bench_simd_vs_scalar!(-50.0..50, exp_m1, f32, 16);
+bench_simd_vs_scalar!(-50.0..50, exp_m1, f64);
 
 bench_simd_vs_scalar!(-1e4..1e4, sin, f32);
 bench_simd_vs_scalar!(-1e4..1e4, sin, f64);

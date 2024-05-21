@@ -7,6 +7,7 @@ namespace bench {
 
 DEF_BENCHES_F32(exp)
 DEF_BENCHES_F32(exp2)
+DEF_BENCHES_F32(expm1)
 DEF_BENCHES_F32(sin)
 DEF_BENCHES_F32(cos)
 DEF_BENCHES_F32(tan)

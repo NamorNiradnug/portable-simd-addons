@@ -1,4 +1,7 @@
-use crate::{math::Exponent, polynomial_simd};
+use crate::{
+    math::{util::FastRound, Exponent},
+    polynomial_simd,
+};
 use std::{
     f32::consts::*,
     simd::{prelude::*, LaneCount, StdFloat, SupportedLaneCount},
@@ -43,7 +46,7 @@ where
     const LN2_HI: f32 = 0.693_359_4;
     const LN2_LO: f32 = 2.121_944_4e-4;
 
-    let n = (x * Simd::splat(LOG2_E)).round();
+    let n = (x * Simd::splat(LOG2_E)).fast_round();
     let reduced_x = n.mul_add(Simd::splat(LN2_LO), n.mul_add(Simd::splat(-LN2_HI), x));
     (reduced_x, pow2i(n))
 }
@@ -86,7 +89,7 @@ where
 
     #[inline]
     fn exp2(self) -> Self {
-        let r = self.round();
+        let r = self.fast_round();
         let reduced = (self - r) * Simd::splat(LN_2);
         exp_handle_overflow_and_special!(
             127.0,

@@ -33,6 +33,7 @@ namespace bench {
 
 IMPL_BENCH_F32_VCL(exp)
 IMPL_BENCH_F32_VCL(exp2)
+IMPL_BENCH_F32_VCL(expm1)
 IMPL_BENCH_F32_VCL(sin)
 IMPL_BENCH_F32_VCL(cos)
 IMPL_BENCH_F32_VCL(tan)
@@ -57,6 +58,7 @@ void atan2_f32_vcl(const float *x, const float *y, float *result) {
 
 IMPL_BENCH_F32_SCALAR(exp)
 IMPL_BENCH_F32_SCALAR(exp2)
+IMPL_BENCH_F32_SCALAR(expm1)
 IMPL_BENCH_F32_SCALAR(sin)
 IMPL_BENCH_F32_SCALAR(cos)
 IMPL_BENCH_F32_SCALAR(tan)
