@@ -12,87 +12,18 @@ use std::simd::prelude::*;
 const BENCH_POINTS: usize = 200_000;
 
 #[cfg(feature = "vectorclass_bench")]
-mod cpp_benches {
-    #[cfg(all(not(target_arch = "x86"), not(target_arch = "x86_64")))]
-    compile_error!("VCL supports only x86-compatible platforms");
+#[path = "cpp/vclbench.rs"]
+mod vclbench;
 
-    use super::{Linspace, BENCH_POINTS};
+#[cfg(feature = "libmvec_bench")]
+#[path = "cpp/libmvecbench.rs"]
+mod libmvecbench;
 
-    #[cxx::bridge(namespace = "bench")]
-    mod ffi {
-        unsafe extern "C++" {
-            include!("portable-simd-addons/benches/vclbench.hpp");
-
-            unsafe fn exp_f32_vcl(x: *const f32, result: *mut f32);
-            unsafe fn exp2_f32_vcl(x: *const f32, result: *mut f32);
-            unsafe fn expm1_f32_vcl(x: *const f32, result: *mut f32);
-
-            unsafe fn sin_f32_vcl(x: *const f32, result: *mut f32);
-            unsafe fn cos_f32_vcl(x: *const f32, result: *mut f32);
-            unsafe fn tan_f32_vcl(x: *const f32, result: *mut f32);
-
-            unsafe fn asin_f32_vcl(x: *const f32, result: *mut f32);
-            unsafe fn acos_f32_vcl(x: *const f32, result: *mut f32);
-            unsafe fn atan_f32_vcl(x: *const f32, result: *mut f32);
-
-            unsafe fn exp_f32_scalar(x: *const f32, result: *mut f32);
-            unsafe fn exp2_f32_scalar(x: *const f32, result: *mut f32);
-            unsafe fn expm1_f32_scalar(x: *const f32, result: *mut f32);
-
-            unsafe fn sin_f32_scalar(x: *const f32, result: *mut f32);
-            unsafe fn cos_f32_scalar(x: *const f32, result: *mut f32);
-            unsafe fn tan_f32_scalar(x: *const f32, result: *mut f32);
-
-            unsafe fn asin_f32_scalar(x: *const f32, result: *mut f32);
-            unsafe fn acos_f32_scalar(x: *const f32, result: *mut f32);
-            unsafe fn atan_f32_scalar(x: *const f32, result: *mut f32);
-        }
-    }
-    macro_rules! bench_cpp {
-        ($($func: tt, $range: expr);* $(;)?) => {
-            $(
-            paste::paste! {
-                #[allow(non_snake_case)]
-                #[bench]
-                fn [< bench_ $func _f32_scalar_cpp >](b: &mut test::Bencher) {
-                    let data: Vec<f32> = ($range).linspace(BENCH_POINTS).collect();
-                    let mut result = vec![0.0; BENCH_POINTS];
-                    b.iter(|| {
-                        unsafe { ffi::[<$func _f32_scalar>](data.as_ptr(), result.as_mut_ptr()) }
-                    });
-                }
-
-                #[allow(non_snake_case)]
-                #[bench]
-                fn [< bench_ $func _f32_vcl >](b: &mut test::Bencher) {
-                    let data: Vec<f32> = ($range).linspace(BENCH_POINTS).collect();
-                    let mut result = vec![0.0; BENCH_POINTS];
-                    b.iter(|| {
-                        unsafe { ffi::[<$func _f32_vcl>](data.as_ptr(), result.as_mut_ptr()) }
-                    });
-                }
-            }
-            )*
-        };
-    }
-
-    bench_cpp!(
-        exp, -50.0..50.0f32;
-        exp2, -50.0..50.0f32;
-        expm1, -50.0..50.0f32;
-        sin, -1e4..1e4f32;
-        cos, -1e4..1e4f32;
-        tan, -1e4..1e4f32;
-        asin, -1.0..1.0f32;
-        acos, -1.0..1.0f32;
-        atan, -1e3..1e3f32;
-    );
-}
-
-macro_rules! bench_simd_vs_scalar {
+macro_rules! bench_func {
     ($range: expr, $func: tt, $ftype: ty) => {
-        bench_simd_vs_scalar!($range, $func, $ftype, 64);
+        bench_func!($range, $func, $ftype, 64);
     };
+
     ($range: expr, $func: tt, $ftype: ty, $vecsize: literal) => {
         paste::paste! {
         #[bench]
@@ -114,7 +45,7 @@ macro_rules! bench_simd_vs_scalar {
         }
 
         #[bench]
-        fn [< bench_ $func _ $ftype _scalar >](b: &mut test::Bencher) {
+        fn [<bench_ $func _ $ftype _scalar >](b: &mut test::Bencher) {
             #[allow(clippy::all)]
             let data: Vec<_> = ($range as $ftype).linspace(BENCH_POINTS).collect();
             let mut result = vec![0.0; BENCH_POINTS];
@@ -126,30 +57,51 @@ macro_rules! bench_simd_vs_scalar {
                 }
             });
         }
+
+
+        #[cfg(feature = "vectorclass_bench")]
+        #[bench]
+        fn [<bench_ $func _ $ftype _vcl >](b: &mut test::Bencher) {
+            let data: Vec<$ftype> = ($range as $ftype).linspace(BENCH_POINTS).collect();
+            let mut result = vec![0.0; BENCH_POINTS];
+            b.iter(|| {
+                unsafe { vclbench::[<$func _ $ftype _vcl>](data.as_ptr(), result.as_mut_ptr()) }
+            });
+        }
+
+        #[cfg(feature = "libmvec_bench")]
+        #[bench]
+        fn [<bench_ $func _ $ftype _libmvec >](b: &mut test::Bencher) {
+            let data: Vec<$ftype> = ($range as $ftype).linspace(BENCH_POINTS).collect();
+            let mut result = vec![0.0; BENCH_POINTS];
+            b.iter(|| {
+                unsafe { libmvecbench::[<$func _ $ftype _libmvec>](data.as_ptr(), result.as_mut_ptr()) }
+            });
+        }
         }
     };
 }
 
-bench_simd_vs_scalar!(-50.0..50, exp, f32, 16);
-bench_simd_vs_scalar!(-50.0..50, exp, f64);
-bench_simd_vs_scalar!(-50.0..50, exp2, f32, 16);
-bench_simd_vs_scalar!(-50.0..50, exp2, f64);
-bench_simd_vs_scalar!(-50.0..50, exp_m1, f32, 16);
-bench_simd_vs_scalar!(-50.0..50, exp_m1, f64);
+bench_func!(-50.0..50, exp, f32, 16);
+bench_func!(-50.0..50, exp, f64);
+bench_func!(-50.0..50, exp2, f32, 16);
+bench_func!(-50.0..50, exp2, f64);
+bench_func!(-50.0..50, exp_m1, f32, 16);
+bench_func!(-50.0..50, exp_m1, f64);
 
-bench_simd_vs_scalar!(-1e4..1e4, sin, f32);
-bench_simd_vs_scalar!(-1e4..1e4, sin, f64);
-bench_simd_vs_scalar!(-1e4..1e4, cos, f32);
-bench_simd_vs_scalar!(-1e4..1e4, cos, f64);
-bench_simd_vs_scalar!(-1e4..1e4, tan, f32);
-bench_simd_vs_scalar!(-1e4..1e4, tan, f64);
+bench_func!(-1e4..1e4, sin, f32);
+bench_func!(-1e4..1e4, sin, f64);
+bench_func!(-1e4..1e4, cos, f32);
+bench_func!(-1e4..1e4, cos, f64);
+bench_func!(-1e4..1e4, tan, f32);
+bench_func!(-1e4..1e4, tan, f64);
 
-bench_simd_vs_scalar!(-1.0..1.0, asin, f32);
-bench_simd_vs_scalar!(-1.0..1.0, asin, f64);
-bench_simd_vs_scalar!(-1.0..1.0, acos, f32);
-bench_simd_vs_scalar!(-1.0..1.0, acos, f64);
-bench_simd_vs_scalar!(-1e3..1e3, atan, f32);
-bench_simd_vs_scalar!(-1e3..1e3, atan, f64);
+bench_func!(-1.0..1.0, asin, f32);
+bench_func!(-1.0..1.0, asin, f64);
+bench_func!(-1.0..1.0, acos, f32);
+bench_func!(-1.0..1.0, acos, f64);
+bench_func!(-1e3..1e3, atan, f32);
+bench_func!(-1e3..1e3, atan, f64);
 
 #[allow(unused)]
 fn generate_atan2_bench_sample() -> (Vec<f32>, Vec<f32>) {
