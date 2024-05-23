@@ -7,7 +7,6 @@ fn main() {
             .file("benches/cpp/vclbench.cpp")
             .flag("-march=native")
             .flag("-Ofast")
-            .flag("-fveclib=libmvec")
             .std("c++17")
             .compile("vclbench");
     }
