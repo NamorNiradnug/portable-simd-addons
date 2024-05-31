@@ -7,14 +7,14 @@ pub trait Linspace {
 impl Linspace for Range<f32> {
     #[allow(refining_impl_trait)]
     fn linspace(&self, n: usize) -> impl Iterator<Item = f32> {
-        (0..=n).map(move |i| self.start + (self.end - self.start) * (i as f32) / (n as f32))
+        (0..n).map(move |i| self.start + (self.end - self.start) * (i as f32) / ((n - 1) as f32))
     }
 }
 
 impl Linspace for Range<f64> {
     #[allow(refining_impl_trait)]
     fn linspace(&self, n: usize) -> impl Iterator<Item = f64> {
-        (0..=n).map(move |i| self.start + (self.end - self.start) * (i as f64) / (n as f64))
+        (0..n).map(move |i| self.start + (self.end - self.start) * (i as f64) / ((n - 1) as f64))
     }
 }
 

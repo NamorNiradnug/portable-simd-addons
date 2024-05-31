@@ -37,6 +37,7 @@ pub trait FloatBitUtils: SimdFloat {
     ///     Simd::from_array([1.0, -0.0, 0.0, 2.0])
     /// )
     /// ```
+    #[inline]
     fn sign_combine(self, other: Self) -> Self
     where
         Self::Bits: BitXor<Output = Self::Bits>,
@@ -49,6 +50,7 @@ impl<const N: usize> FloatBitUtils for Simd<f32, N>
 where
     LaneCount<N>: SupportedLaneCount,
 {
+    #[inline]
     fn sign_bit(self) -> Simd<u32, N> {
         self.to_bits() & Simd::splat(1 << 31)
     }
@@ -58,7 +60,34 @@ impl<const N: usize> FloatBitUtils for Simd<f64, N>
 where
     LaneCount<N>: SupportedLaneCount,
 {
+    #[inline]
     fn sign_bit(self) -> Simd<u64, N> {
         self.to_bits() & Simd::splat(1 << 63)
+    }
+}
+
+pub trait FastRound {
+    /// Currently same as `round_ties_even`. Unlike `.round()`,
+    /// compiles into a single rounding instruction on common platforms.
+    fn fast_round(self) -> Self;
+}
+
+impl<const N: usize> FastRound for Simd<f32, N>
+where
+    LaneCount<N>: SupportedLaneCount,
+{
+    #[inline]
+    fn fast_round(self) -> Self {
+        self.to_array().map(f32::round_ties_even).into()
+    }
+}
+
+impl<const N: usize> FastRound for Simd<f64, N>
+where
+    LaneCount<N>: SupportedLaneCount,
+{
+    #[inline]
+    fn fast_round(self) -> Self {
+        self.to_array().map(f64::round_ties_even).into()
     }
 }
