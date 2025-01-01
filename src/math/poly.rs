@@ -37,6 +37,11 @@ macro_rules! polynomial_simd {
         (Simd::splat($coef_0) - $x)
     };
 
+    ($x: expr; $coef_0: expr, $coef_1: expr, $coef_2: expr) => {{
+        let x = $x;
+        Simd::splat($coef_2).mul_add(x, Simd::splat($coef_1)).mul_add(x, Simd::splat($coef_0))
+    }};
+
     ($x: expr; $( $coef_even: expr, $coef_odd: expr ),+) => {{
         let x = $x;
         let x2 = x * x;

@@ -3,7 +3,10 @@ use std::{
     simd::{prelude::*, LaneCount, StdFloat, SupportedLaneCount},
 };
 
-use crate::{math::Exponent, polynomial_simd};
+use crate::{
+    math::{util::FastRound, Exponent},
+    polynomial_simd,
+};
 
 fn exp_m1_taylor<const N: usize>(x: Simd<f64, N>) -> Simd<f64, N>
 where
@@ -49,7 +52,7 @@ where
     const LN2_HI: f64 = 0.693_145_751_953_125;
     const LN2_LO: f64 = 1.428_606_820_309_417_3E-6;
 
-    let n = (x * Simd::splat(LOG2_E)).round();
+    let n = (x * Simd::splat(LOG2_E)).fast_round();
     let reduced_x = n.mul_add(Simd::splat(-LN2_LO), n.mul_add(Simd::splat(-LN2_HI), x));
     (reduced_x, pow2i(n))
 }
@@ -92,7 +95,7 @@ where
 
     #[inline]
     fn exp2(self) -> Self {
-        let r = self.round();
+        let r = self.fast_round();
         let reduced = (self - r) * Simd::splat(LN_2);
         exp_handle_overflow_and_special!(
             1023.0,
